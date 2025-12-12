@@ -1,0 +1,16 @@
+fastapi
+pydantic
+pyodbc
+python-dotenv
+uvicorn
+
+
+
+# patrol
+# year
+# meeting master
+# student master
+# test master
+# activity master
+# user master 
+# role master
