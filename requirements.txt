@@ -1,16 +1,11 @@
-fastapi
-pydantic
-pyodbc
-python-dotenv
-uvicorn
+# FastAPI and related packages
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-dotenv==1.0.0
 
+# PostgreSQL database driver
+psycopg2-binary==2.9.9
 
-
-# patrol
-# year
-# meeting master
-# student master
-# test master
-# activity master
-# user master 
-# role master
+# Additional utilities
+python-multipart==0.0.6
