@@ -1,0 +1,102 @@
+#!/bin/bash
+# Manual API Test Script
+# Use this to test your API credentials before running the automated service
+
+echo "==========================================="
+echo "ITS HandlerB2 API - Manual Test"
+echo "==========================================="
+echo ""
+
+# Configuration (EDIT THESE VALUES)
+AUTH_TOKEN="blP4Dr2eIS7kuYiMzAnRFhU9wOCp1d6tXLVmaE3qTHvjBcQsgJ8ZN"
+HCODE="KBNIJJMFPX"
+DATA_OUTPUT="JSON"
+PARAM1="30320819"
+API_URL="https://api.its52.com/Services.asmx/HandlerB2"
+
+echo "Testing API with:"
+echo "  URL: $API_URL"
+echo "  HCode: $HCODE"
+echo "  Data Output: $DATA_OUTPUT"
+echo ""
+
+# Test 1: HTTP POST Method
+echo "Test 1: HTTP POST Method"
+echo "-------------------------------------------"
+curl -X POST "$API_URL" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "Auth_Token=$AUTH_TOKEN&HCode=$HCODE&Data_Output=$DATA_OUTPUT&Param1=$PARAM1" \
+  -v
+
+echo ""
+echo ""
+
+
+echo "==========================================="
+echo "ITS HandlerE1 API - Manual Test"
+echo "==========================================="
+echo ""
+
+# Configuration (EDIT THESE VALUES)
+AUTH_TOKEN_E1="blP4Dr2eIS7kuYiMzAnRFhU9wOCp1d6tXLVmaE3qTHvjBcQsgJ8ZN"
+HCODE_E1="IFI45JXYA5"
+PARAM1_E1="30320819"
+API_URL_E1="https://api.its52.com/Services.asmx/HandlerE1"
+
+echo "Testing API with:"
+echo "  URL: $API_URL_E1"
+echo "  HCode: $HCODE_E1"
+echo "  Data Output: $DATA_OUTPUT"
+echo ""
+
+# Test 1-E1: HTTP POST Method
+echo "Test 1: HTTP POST Method"
+echo "-------------------------------------------"
+curl -X POST "$API_URL_E1" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "Auth_Token=$AUTH_TOKEN_E1&HCode=$HCODE_E1&Param1=$PARAM1_E1" \
+  -v
+
+echo ""
+echo ""
+
+
+# Test 2: HTTP GET Method
+echo "Test 2: HTTP GET Method"
+echo "-------------------------------------------"
+curl -X GET "${API_URL}?Auth_Token=${AUTH_TOKEN}&HCode=${HCODE}&Data_Output=${DATA_OUTPUT}&Param1=${PARAM1}" \
+  -v
+
+echo ""
+echo ""
+
+# Test 3: SOAP 1.1 Method
+echo "Test 3: SOAP 1.1 Method"
+echo "-------------------------------------------"
+curl -X POST "http://api.its52.com/Services.asmx" \
+  -H "Content-Type: text/json; charset=utf-8" \
+  -H 'SOAPAction: "http://localhost/api/Services/HandlerB2"' \
+  -d "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">
+  <soap:Body>
+    <HandlerB2 xmlns=\"http://localhost/api/Services\">
+      <Auth_Token>$AUTH_TOKEN</Auth_Token>
+      <HCode>$HCODE</HCode>
+      <Data_Output>$DATA_OUTPUT</Data_Output>
+      <Param1>$PARAM1</Param1>
+    </HandlerB2>
+  </soap:Body>
+</soap:Envelope>" \
+  -v
+
+echo ""
+echo ""
+echo "==========================================="
+echo "Test Complete"
+echo "==========================================="
+echo ""
+echo "If you see successful responses above, your"
+echo "credentials are correct and you can proceed"
+echo "with the automated service installation."
+echo ""
+(venv) ubuntu@ip-172-31-36-211:/tmp/soap-api$

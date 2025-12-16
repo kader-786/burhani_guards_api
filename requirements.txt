@@ -9,3 +9,12 @@ psycopg2-binary==2.9.9
 
 # Additional utilities
 python-multipart==0.0.6
+
+# JWT Authentication
+python-jose[cryptography]==3.3.0
+
+# HTTP Requests (for external API calls)
+requests==2.31.0  # ← ADD THIS
+
+# Additional utilities
+python-multipart==0.0.6
