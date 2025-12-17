@@ -1,7 +1,7 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import Login_controller, ITS_API_controller, Duty_controller, Team_controller
+from app.routers import Login_controller, ITS_API_controller, Duty_controller, Team_controller, Guards_controller  
 from app.config import API_BASE_PATH
 from app.db import initialize_connection_pool
 import logging
@@ -90,6 +90,11 @@ app.include_router(
 
 app.include_router(
     Team_controller.router,
+    prefix=API_BASE_PATH
+)
+
+app.include_router(
+    Guards_controller.router,
     prefix=API_BASE_PATH
 )
 

@@ -55,9 +55,56 @@ def get_db_connection_direct():
     """
     return psycopg2.connect(get_pg_connection_string())
 
+# def call_function(conn, function_name: str, params: dict = None):
+#     """
+#     Call a PostgreSQL function and return JSON result
+    
+#     Args:
+#         conn: Database connection
+#         function_name: Full function name (e.g., 'bg.com_spr_login_json')
+#         params: Dictionary of parameters
+    
+#     Returns:
+#         JSON result from the function
+#     """
+#     try:
+#         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+#             # Set search path to include the schema
+#             cursor.execute(f"SET search_path TO {PG_CONFIG['schema']}, public")
+            
+#             # Build the function call
+#             if params:
+#                 placeholders = ', '.join([f'%({key})s' for key in params.keys()])
+#                 sql = f"SELECT * FROM {function_name}({placeholders})"
+#                 cursor.execute(sql, params)
+#             else:
+#                 sql = f"SELECT * FROM {function_name}()"
+#                 cursor.execute(sql)
+            
+#             # Fetch the result
+#             result = cursor.fetchone()
+            
+#             # If the function returns a JSON column, extract it
+#             if result:
+#                 # The function might return a single JSON column or multiple columns
+#                 if len(result) == 1:
+#                     return list(result.values())[0]
+#                 else:
+#                     return dict(result)
+            
+#             return None
+            
+#     except Exception as e:
+#         logger.error(f"Error calling function {function_name}: {e}")
+#         raise
+
 def call_function(conn, function_name: str, params: dict = None):
     """
-    Call a PostgreSQL function and return JSON result
+    Call a PostgreSQL function and return result(s)
+    
+    Handles two types of PostgreSQL functions:
+    1. Functions that return JSON - returns the parsed JSON
+    2. Functions that return TABLE/SETOF - returns list of dicts
     
     Args:
         conn: Database connection
@@ -65,7 +112,9 @@ def call_function(conn, function_name: str, params: dict = None):
         params: Dictionary of parameters
     
     Returns:
-        JSON result from the function
+        - For JSON return type: Returns the JSON object/array
+        - For TABLE return type: Returns list of dictionaries (one per row)
+        - None if no results
     """
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -81,22 +130,32 @@ def call_function(conn, function_name: str, params: dict = None):
                 sql = f"SELECT * FROM {function_name}()"
                 cursor.execute(sql)
             
-            # Fetch the result
-            result = cursor.fetchone()
+            # ✅ FIXED: Fetch ALL results, not just one
+            results = cursor.fetchall()
             
-            # If the function returns a JSON column, extract it
-            if result:
-                # The function might return a single JSON column or multiple columns
-                if len(result) == 1:
-                    return list(result.values())[0]
+            if not results:
+                return None
+            
+            # Determine what type of result we have
+            # If function returns JSON (single column), extract it
+            if len(cursor.description) == 1:
+                # Function returns a single JSON column
+                # If multiple rows, return list; if single row, return the JSON value
+                if len(results) == 1:
+                    # Single row with JSON column
+                    return list(results[0].values())[0]
                 else:
-                    return dict(result)
-            
-            return None
+                    # Multiple rows with JSON column (rare, but handle it)
+                    return [list(row.values())[0] for row in results]
+            else:
+                # Function returns TABLE with multiple columns
+                # Return list of dictionaries
+                return [dict(row) for row in results]
             
     except Exception as e:
         logger.error(f"Error calling function {function_name}: {e}")
         raise
+
 
 def execute_query(conn, query: str, params: tuple = None):
     """

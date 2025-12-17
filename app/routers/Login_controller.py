@@ -14,6 +14,8 @@ from app.auth import (
 import traceback
 import logging
 import json
+from psycopg2.extras import RealDictCursor  # ← ADD THIS IMPORT
+
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +206,7 @@ async def health_check():
 # ============================================================================
 
 @router.get("/Maintenance/get-all")
-async def get_all_maintenance(current_user: dict = Depends(get_current_user)):
+async def get_all_maintenance():
     """
     Get all maintenance settings
     
@@ -234,36 +236,23 @@ async def get_all_maintenance(current_user: dict = Depends(get_current_user)):
     """
     try:
         with get_db_connection() as conn:
-            # Call the PostgreSQL function
-            result = call_function(
-                conn,
-                f"{PG_CONFIG['schema']}.com_spr_maintenance",
-                {
-                    "p_query_type": "SELECT-ALL"
-                }
-            )
-            
-            logger.info(f"Maintenance settings retrieved by user: {current_user.get('its_id')}")
-            
-            # The function returns a list of records
-            # Convert to list of dictionaries if needed
-            if result:
-                # If result is a single dict, wrap in list
-                if isinstance(result, dict):
-                    data = [result]
-                else:
-                    data = result
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                # Call function directly with fetchall()
+                cursor.execute(
+                    f"SELECT * FROM {PG_CONFIG['schema']}.com_spr_maintenance(%s)",
+                    ('SELECT-ALL',)
+                )
+                
+                # ✅ Get all rows
+                results = cursor.fetchall()
+                
+                # Convert to list of dicts
+                data = [dict(row) for row in results]
                 
                 return {
                     "success": True,
                     "message": "Maintenance settings retrieved successfully",
                     "data": data
-                }
-            else:
-                return {
-                    "success": True,
-                    "message": "No maintenance settings found",
-                    "data": []
                 }
             
     except Exception as ex:
