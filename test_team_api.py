@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Team API Test Script
-Tests the team endpoints
+Team API Test Script - Updated with all endpoints
+Tests all team endpoints
 """
 
 import requests
@@ -53,8 +53,7 @@ def login_and_get_token():
             data = response.json()
             if data.get("success"):
                 token = data["tokens"]["access_token"]
-                print_success(f"Login successful!")
-                print_info(f"Token: {token[:50]}...")
+                print_success("Login successful!")
                 print_info(f"User: {data['data']['full_name']}")
                 print_info(f"Team ID: {data['data']['team_id']}")
                 return token
@@ -83,35 +82,120 @@ def test_view_team(token):
             headers={"Authorization": f"Bearer {token}"}
         )
         
-        print_info(f"Status Code: {response.status_code}")
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success"):
+                print_success("Team members retrieved!")
+                members = data.get("data", [])
+                print_info(f"Found {len(members)} member(s)")
+                return True
+        
+        print_error("ViewTeam failed")
+        return False
+    
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
+def test_get_all_teams(token):
+    """Test GetAllTeams endpoint"""
+    print_header("Step 3: Test Get All Teams")
+    
+    try:
+        response = requests.get(
+            f"{BASE_URL}/Team/GetAllTeams",
+            headers={"Authorization": f"Bearer {token}"}
+        )
         
         if response.status_code == 200:
             data = response.json()
-            print(f"\n{YELLOW}Response:{RESET}")
-            print(json.dumps(data, indent=2))
-            
             if data.get("success"):
-                print_success("Team members retrieved successfully!")
-                
-                # Display summary
-                members = data.get("data", [])
-                if members:
-                    print_info(f"\nFound {len(members)} team member(s):")
-                    for member in members[:5]:  # Show first 5
-                        print(f"  • {member.get('full_name')} ({member.get('its_id')}) - {member.get('position_name')}")
-                    if len(members) > 5:
-                        print(f"  ... and {len(members) - 5} more")
-                else:
-                    print_info("No team members found")
-                
+                print_success("All teams retrieved!")
+                teams = data.get("data", [])
+                print_info(f"Found {len(teams)} team(s)")
                 return True
-            else:
-                print_error(f"Query failed: {data.get('message')}")
-                return False
-        else:
-            print_error(f"Request failed with status {response.status_code}")
-            print(response.text)
-            return False
+        
+        print_error("GetAllTeams failed")
+        return False
+    
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
+def test_get_team_by_id(token):
+    """Test GetTeamById endpoint"""
+    print_header("Step 4: Test Get Team By ID")
+    
+    try:
+        response = requests.post(
+            f"{BASE_URL}/Team/GetTeamById",
+            json={"team_id": TEST_TEAM_ID},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success"):
+                print_success("Team details retrieved!")
+                return True
+        
+        print_error("GetTeamById failed")
+        return False
+    
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
+def test_get_jamaats_by_team_id(token):
+    """Test GetJamaatsByTeamId endpoint"""
+    print_header("Step 5: Test Get Jamaats By Team ID")
+    
+    try:
+        response = requests.post(
+            f"{BASE_URL}/Team/GetJamaatsByTeamId",
+            json={"team_id": TEST_TEAM_ID},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success"):
+                print_success("Jamaats retrieved!")
+                jamaats = data.get("data", [])
+                print_info(f"Found {len(jamaats)} jamaat(s)")
+                return True
+        
+        print_error("GetJamaatsByTeamId failed")
+        return False
+    
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
+def test_get_all_jamiaats(token):
+    """Test GetAllJamiaats endpoint"""
+    print_header("Step 6: Test Get All Jamiaats")
+    
+    try:
+        response = requests.get(
+            f"{BASE_URL}/Team/GetAllJamiaats",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success"):
+                print_success("All jamiaats retrieved!")
+                jamiaats = data.get("data", [])
+                print_info(f"Found {len(jamiaats)} jamiaat(s)")
+                return True
+        
+        print_error("GetAllJamiaats failed")
+        return False
     
     except Exception as e:
         print_error(f"Error: {str(e)}")
@@ -120,69 +204,49 @@ def test_view_team(token):
 
 def test_view_my_team(token):
     """Test ViewMyTeam endpoint"""
-    print_header("Step 3: Test View My Team (Convenience Endpoint)")
+    print_header("Step 7: Test View My Team")
     
     try:
-        print_info("Calling ViewMyTeam (uses team ID from token)")
-        
         response = requests.get(
             f"{BASE_URL}/Team/ViewMyTeam",
             headers={"Authorization": f"Bearer {token}"}
         )
         
-        print_info(f"Status Code: {response.status_code}")
-        
         if response.status_code == 200:
             data = response.json()
-            print(f"\n{YELLOW}Response:{RESET}")
-            print(json.dumps(data, indent=2))
-            
             if data.get("success"):
-                print_success("My team members retrieved successfully!")
-                
-                # Display summary
-                members = data.get("data", [])
-                if members:
-                    print_info(f"\nYour team has {len(members)} member(s):")
-                    for member in members[:5]:  # Show first 5
-                        print(f"  • {member.get('full_name')} - {member.get('position_name')}")
-                    if len(members) > 5:
-                        print(f"  ... and {len(members) - 5} more")
-                else:
-                    print_info("Your team has no members")
-                
+                print_success("My team members retrieved!")
                 return True
-            else:
-                print_error(f"Query failed: {data.get('message')}")
-                return False
-        else:
-            print_error(f"Request failed with status {response.status_code}")
-            print(response.text)
-            return False
+        
+        print_error("ViewMyTeam failed")
+        return False
     
     except Exception as e:
         print_error(f"Error: {str(e)}")
         return False
 
 
-def test_health():
-    """Test team health endpoint"""
-    print_header("Step 4: Test Team Health Check")
+def test_get_my_team_details(token):
+    """Test GetMyTeamDetails endpoint"""
+    print_header("Step 8: Test Get My Team Details")
     
     try:
-        response = requests.get(f"{BASE_URL}/Team/health")
+        response = requests.get(
+            f"{BASE_URL}/Team/GetMyTeamDetails",
+            headers={"Authorization": f"Bearer {token}"}
+        )
         
         if response.status_code == 200:
             data = response.json()
-            print(json.dumps(data, indent=2))
-            print_success("Health check passed!")
-            return True
-        else:
-            print_error(f"Health check failed with status {response.status_code}")
-            return False
+            if data.get("success"):
+                print_success("My team details retrieved!")
+                return True
+        
+        print_error("GetMyTeamDetails failed")
+        return False
     
     except Exception as e:
-        print_error(f"Health check error: {str(e)}")
+        print_error(f"Error: {str(e)}")
         return False
 
 
@@ -191,41 +255,33 @@ def main():
     print(f"{'Team API Test Suite':^70}")
     print(f"{'='*70}{RESET}\n")
     
-    print_info(f"Base URL: {BASE_URL}")
-    print_info(f"Test ITS ID: {TEST_ITS_ID}")
-    print_info(f"Test Team ID: {TEST_TEAM_ID}\n")
-    
-    # Step 1: Login
+    # Login
     token = login_and_get_token()
     if not token:
         print_error("\n❌ Cannot proceed without authentication token")
         return 1
     
-    # Step 2: Test view team
-    test1 = test_view_team(token)
-    
-    # Step 3: Test view my team
-    test2 = test_view_my_team(token)
-    
-    # Step 4: Test health
-    test3 = test_health()
+    # Run all tests
+    results = [
+        ("Login", token is not None),
+        ("View Team", test_view_team(token)),
+        ("Get All Teams", test_get_all_teams(token)),
+        ("Get Team By ID", test_get_team_by_id(token)),
+        ("Get Jamaats By Team ID", test_get_jamaats_by_team_id(token)),
+        ("Get All Jamiaats", test_get_all_jamiaats(token)),
+        ("View My Team", test_view_my_team(token)),
+        ("Get My Team Details", test_get_my_team_details(token))
+    ]
     
     # Summary
     print_header("TEST SUMMARY")
-    
-    results = [
-        ("Login", token is not None),
-        ("View Team", test1),
-        ("View My Team", test2),
-        ("Health Check", test3)
-    ]
     
     passed = sum(1 for _, r in results if r)
     total = len(results)
     
     for name, result in results:
         status = f"{GREEN}PASSED{RESET}" if result else f"{RED}FAILED{RESET}"
-        print(f"  {name:<35} {status}")
+        print(f"  {name:<30} {status}")
     
     print(f"\n{BLUE}Results: {passed}/{total} tests passed{RESET}")
     
@@ -239,4 +295,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

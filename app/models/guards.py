@@ -1,12 +1,11 @@
 # app/models/guards.py
 from pydantic import BaseModel, Field
 from typing import Optional, Any
-from datetime import date as DateType  # ← Rename the import to avoid clash
+from datetime import date as DateType
 
 class GuardsByDateRequest(BaseModel):
     """Request model for getting guards by miqaat date"""
     miqaat_date: DateType = Field(..., description="Miqaat date to query guards for (YYYY-MM-DD)")
-    # ↑ Renamed field to 'miqaat_date' to avoid clash
     
     class Config:
         json_schema_extra = {
@@ -24,6 +23,23 @@ class GuardCheckRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "its_id": 10001001
+            }
+        }
+
+
+# ← ADD THIS NEW MODEL
+class GuardsWithDutyRequest(BaseModel):
+    """Request model for getting all guards with duty assignment status"""
+    miqaat_id: int = Field(..., description="Miqaat ID")
+    duty_id: int = Field(..., description="Duty ID")
+    team_id: int = Field(..., description="Team ID")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "miqaat_id": 1,
+                "duty_id": 3,
+                "team_id": 2
             }
         }
 

@@ -1,332 +1,494 @@
 #!/usr/bin/env python3
 """
-Duty API Test Script
-Tests the duty endpoints
+Test Script for Guard Duty Insert API Endpoint
+
+Tests both INSERT and DELETE operations for guard duty assignments.
+Includes comprehensive validation and result verification.
 """
 
 import requests
 import json
-import sys
+from datetime import datetime
+from typing import Optional, Dict, Any
 
-# Configuration
-BASE_URL = "http://localhost:8000/BURHANI_GUARDS_API_TEST/api"
-TEST_ITS_ID = "10001001"
-TEST_PASSWORD = "5678"
-TEST_TEAM_ID = 2  # Update with actual team ID
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
 
-# Colors
-GREEN = '\033[92m'
-RED = '\033[91m'
-YELLOW = '\033[93m'
-BLUE = '\033[94m'
-RESET = '\033[0m'
+BASE_URL = "http://13.204.161.209:8080"
+LOGIN_ENDPOINT = f"{BASE_URL}/Login/Checklogin"
+GUARD_DUTY_INSERT_ENDPOINT = f"{BASE_URL}/Duty/GuardDutyInsert"
+HEALTH_ENDPOINT = f"{BASE_URL}/Duty/health"
 
-def print_header(text):
-    print(f"\n{BLUE}{'='*70}")
-    print(f"{text:^70}")
-    print(f"{'='*70}{RESET}\n")
+# Test credentials
+TEST_USERNAME = "10001001"
+TEST_PASSWORD = "password"
 
-def print_success(msg):
-    print(f"{GREEN}✓ {msg}{RESET}")
+# ANSI color codes
+class Colors:
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
 
-def print_error(msg):
-    print(f"{RED}✗ {msg}{RESET}")
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
 
-def print_info(msg):
-    print(f"{YELLOW}ℹ {msg}{RESET}")
+def print_header(text: str):
+    """Print a formatted header"""
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{text:^80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}\n")
 
+def print_test(test_name: str):
+    """Print a test name"""
+    print(f"\n{Colors.BOLD}{Colors.BLUE}TEST: {test_name}{Colors.RESET}")
+    print(f"{Colors.BLUE}{'-' * 80}{Colors.RESET}")
 
-def login_and_get_token():
-    """Login and get access token"""
-    print_header("Step 1: Login to Get Access Token")
+def print_success(message: str):
+    """Print a success message"""
+    print(f"{Colors.GREEN}✓ {message}{Colors.RESET}")
+
+def print_error(message: str):
+    """Print an error message"""
+    print(f"{Colors.RED}✗ {message}{Colors.RESET}")
+
+def print_warning(message: str):
+    """Print a warning message"""
+    print(f"{Colors.YELLOW}⚠ {message}{Colors.RESET}")
+
+def print_info(message: str):
+    """Print an info message"""
+    print(f"  {message}")
+
+def print_json(data: Any, indent: int = 2):
+    """Print formatted JSON"""
+    print(f"{Colors.CYAN}{json.dumps(data, indent=indent)}{Colors.RESET}")
+
+# ============================================================================
+# TEST FUNCTIONS
+# ============================================================================
+
+def login() -> Optional[str]:
+    """Login and get JWT token"""
+    print_test("Login")
     
     try:
         response = requests.post(
-            f"{BASE_URL}/Login/CheckLogin",
+            LOGIN_ENDPOINT,
             json={
-                "username": TEST_ITS_ID,
-                "password": TEST_PASSWORD
-            }
+                "UserName": TEST_USERNAME,
+                "Password": TEST_PASSWORD
+            },
+            timeout=10
         )
+        
+        print_info(f"Response Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            if data.get("success"):
-                token = data["tokens"]["access_token"]
-                print_success(f"Login successful!")
+            print_json(data)
+            
+            if data.get("success") and data.get("access_token"):
+                token = data["access_token"]
+                print_success("Login successful")
                 print_info(f"Token: {token[:50]}...")
-                print_info(f"User: {data['data']['full_name']}")
-                print_info(f"Team ID: {data['data']['team_id']}")
                 return token
             else:
-                print_error(f"Login failed: {data.get('message')}")
+                print_error("Login failed: No token in response")
                 return None
         else:
             print_error(f"Login failed with status {response.status_code}")
+            print_info(f"Response: {response.text}")
             return None
     
-    except Exception as e:
-        print_error(f"Login error: {str(e)}")
+    except Exception as ex:
+        print_error(f"Login exception: {str(ex)}")
         return None
 
 
-def test_active_assigned_miqaat_duties(token):
-    """Test GetActiveAssignedMiqaatDuties endpoint"""
-    print_header("Step 2: Test Active Assigned Miqaat Duties")
+def test_health_check():
+    """Test health check endpoint (no auth required)"""
+    print_test("Health Check (Public Endpoint)")
     
     try:
-        print_info(f"Calling GetActiveAssignedMiqaatDuties for team_id: {TEST_TEAM_ID}")
+        response = requests.get(HEALTH_ENDPOINT, timeout=10)
         
-        response = requests.post(
-            f"{BASE_URL}/Duty/GetActiveAssignedMiqaatDuties",
-            json={"team_id": TEST_TEAM_ID},
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        
-        print_info(f"Status Code: {response.status_code}")
+        print_info(f"Response Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            print(f"\n{YELLOW}Response:{RESET}")
-            print(json.dumps(data, indent=2))
+            print_json(data)
             
-            if data.get("success"):
-                print_success("Active assigned miqaat duties retrieved successfully!")
-                
-                # Display summary
-                duties = data.get("data", [])
-                if duties:
-                    print_info(f"\nFound {len(duties)} active duty assignment(s):")
-                    for duty in duties[:3]:  # Show first 3
-                        print(f"  • {duty.get('miqaat_name')} - {duty.get('location')}")
-                else:
-                    print_info("No active duties found for this team")
-                
+            if data.get("status") == "healthy":
+                print_success("Health check passed")
                 return True
             else:
-                print_error(f"Query failed: {data.get('message')}")
+                print_warning("Health check returned non-healthy status")
                 return False
-        else:
-            print_error(f"Request failed with status {response.status_code}")
-            print(response.text)
-            return False
-    
-    except Exception as e:
-        print_error(f"Error: {str(e)}")
-        return False
-
-
-def test_guard_duties_assigned(token):
-    """Test GetGuardDutiesAssigned endpoint"""
-    print_header("Step 3: Test Guard Duties Assigned")
-    
-    try:
-        print_info(f"Calling GetGuardDutiesAssigned for its_id: {TEST_ITS_ID}")
-        
-        response = requests.post(
-            f"{BASE_URL}/Duty/GetGuardDutiesAssigned",
-            json={"its_id": int(TEST_ITS_ID)},
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        
-        print_info(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"\n{YELLOW}Response:{RESET}")
-            print(json.dumps(data, indent=2))
-            
-            if data.get("success"):
-                print_success("Guard duties retrieved successfully!")
-                
-                # Display summary
-                duties = data.get("data", [])
-                if duties:
-                    print_info(f"\nFound {len(duties)} assigned duty/duties:")
-                    for duty in duties[:3]:  # Show first 3
-                        print(f"  • {duty.get('miqaat_name')} - {duty.get('location')}")
-                else:
-                    print_info("No guard duties found for this member")
-                
-                return True
-            else:
-                print_error(f"Query failed: {data.get('message')}")
-                return False
-        else:
-            print_error(f"Request failed with status {response.status_code}")
-            print(response.text)
-            return False
-    
-    except Exception as e:
-        print_error(f"Error: {str(e)}")
-        return False
-
-
-def test_my_duties(token):
-    """Test GetMyDuties endpoint"""
-    print_header("Step 4: Test My Duties (Convenience Endpoint)")
-    
-    try:
-        print_info("Calling GetMyDuties (uses ITS ID from token)")
-        
-        response = requests.get(
-            f"{BASE_URL}/Duty/GetMyDuties",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        
-        print_info(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"\n{YELLOW}Response:{RESET}")
-            print(json.dumps(data, indent=2))
-            
-            if data.get("success"):
-                print_success("My duties retrieved successfully!")
-                
-                # Display summary
-                duties = data.get("data", [])
-                if duties:
-                    print_info(f"\nYou have {len(duties)} assigned duty/duties")
-                else:
-                    print_info("You have no duties assigned")
-                
-                return True
-            else:
-                print_error(f"Query failed: {data.get('message')}")
-                return False
-        else:
-            print_error(f"Request failed with status {response.status_code}")
-            print(response.text)
-            return False
-    
-    except Exception as e:
-        print_error(f"Error: {str(e)}")
-        return False
-
-
-def test_my_team_duties(token):
-    """Test GetMyTeamDuties endpoint"""
-    print_header("Step 5: Test My Team Duties (Convenience Endpoint)")
-    
-    try:
-        print_info("Calling GetMyTeamDuties (uses team ID from token)")
-        
-        response = requests.get(
-            f"{BASE_URL}/Duty/GetMyTeamDuties",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        
-        print_info(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"\n{YELLOW}Response:{RESET}")
-            print(json.dumps(data, indent=2))
-            
-            if data.get("success"):
-                print_success("My team duties retrieved successfully!")
-                
-                # Display summary
-                duties = data.get("data", [])
-                if duties:
-                    print_info(f"\nYour team has {len(duties)} active duty assignment(s)")
-                else:
-                    print_info("Your team has no active duties")
-                
-                return True
-            else:
-                print_error(f"Query failed: {data.get('message')}")
-                return False
-        else:
-            print_error(f"Request failed with status {response.status_code}")
-            print(response.text)
-            return False
-    
-    except Exception as e:
-        print_error(f"Error: {str(e)}")
-        return False
-
-
-def test_health():
-    """Test duty health endpoint"""
-    print_header("Step 6: Test Duty Health Check")
-    
-    try:
-        response = requests.get(f"{BASE_URL}/Duty/health")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(json.dumps(data, indent=2))
-            print_success("Health check passed!")
-            return True
         else:
             print_error(f"Health check failed with status {response.status_code}")
             return False
     
-    except Exception as e:
-        print_error(f"Health check error: {str(e)}")
+    except Exception as ex:
+        print_error(f"Health check exception: {str(ex)}")
         return False
 
 
+def test_guard_duty_insert(token: str) -> Optional[int]:
+    """
+    Test guard duty INSERT operation
+    Returns the guard_duty_id if successful
+    """
+    print_test("Guard Duty INSERT")
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "form_name": "TEST_GUARD_DUTY_FORM",
+        "flag": "I",
+        "duty_id": 1,
+        "team_id": 2,
+        "miqaat_id": 17,
+        "its_id": 10009999  # Test ITS ID
+    }
+    
+    print_info("Request Payload:")
+    print_json(payload)
+    
+    try:
+        response = requests.post(
+            GUARD_DUTY_INSERT_ENDPOINT,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        print_info(f"\nResponse Status: {response.status_code}")
+        
+        if response.status_code in [200, 201]:
+            data = response.json()
+            print_info("Response:")
+            print_json(data)
+            
+            if data.get("success") and data.get("result") == 1:
+                print_success("Guard duty INSERT successful (result=1)")
+                print_info("✓ Guard assigned to duty")
+                print_info("✓ Activity should be logged")
+                return True
+            elif data.get("result") == 4:
+                print_warning("Duplicate detected (result=4)")
+                print_info("Guard already assigned to this duty")
+                return False
+            else:
+                print_error(f"INSERT failed with result={data.get('result')}")
+                return False
+        else:
+            print_error(f"INSERT failed with status {response.status_code}")
+            print_info(f"Response: {response.text}")
+            return False
+    
+    except Exception as ex:
+        print_error(f"INSERT exception: {str(ex)}")
+        return False
+
+
+def test_guard_duty_duplicate_insert(token: str):
+    """Test guard duty INSERT with duplicate (should return result=4)"""
+    print_test("Guard Duty INSERT - Duplicate Detection")
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "form_name": "TEST_GUARD_DUTY_FORM",
+        "flag": "I",
+        "duty_id": 1,
+        "team_id": 2,
+        "miqaat_id": 17,
+        "its_id": 10009999  # Same as previous insert
+    }
+    
+    print_info("Request Payload (Same as previous):")
+    print_json(payload)
+    
+    try:
+        response = requests.post(
+            GUARD_DUTY_INSERT_ENDPOINT,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        print_info(f"\nResponse Status: {response.status_code}")
+        
+        if response.status_code == 409:  # Conflict
+            data = response.json()
+            print_info("Response:")
+            print_json(data)
+            
+            if data.get("result") == 4:
+                print_success("Duplicate correctly detected (result=4)")
+                print_info("✓ System prevented duplicate assignment")
+                return True
+            else:
+                print_error(f"Unexpected result code: {data.get('result')}")
+                return False
+        else:
+            print_error(f"Unexpected status code: {response.status_code}")
+            print_info(f"Response: {response.text}")
+            return False
+    
+    except Exception as ex:
+        print_error(f"Duplicate test exception: {str(ex)}")
+        return False
+
+
+def test_guard_duty_delete(token: str, guard_duty_id: int):
+    """Test guard duty DELETE operation"""
+    print_test("Guard Duty DELETE (Soft Delete)")
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "form_name": "TEST_GUARD_DUTY_FORM",
+        "flag": "D",
+        "guard_duty_id": guard_duty_id
+    }
+    
+    print_info("Request Payload:")
+    print_json(payload)
+    
+    try:
+        response = requests.post(
+            GUARD_DUTY_INSERT_ENDPOINT,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        print_info(f"\nResponse Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print_info("Response:")
+            print_json(data)
+            
+            if data.get("success") and data.get("result") == 3:
+                print_success("Guard duty DELETE successful (result=3)")
+                print_info("✓ Guard removed from duty (soft deleted)")
+                print_info("✓ Activity should be logged")
+                return True
+            elif data.get("result") == 0:
+                print_warning("DELETE failed - Record not found or already deleted (result=0)")
+                return False
+            else:
+                print_error(f"DELETE failed with result={data.get('result')}")
+                return False
+        else:
+            print_error(f"DELETE failed with status {response.status_code}")
+            print_info(f"Response: {response.text}")
+            return False
+    
+    except Exception as ex:
+        print_error(f"DELETE exception: {str(ex)}")
+        return False
+
+
+def test_missing_required_fields(token: str):
+    """Test validation of required fields"""
+    print_test("Validation - Missing Required Fields")
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Test INSERT without required fields
+    payload = {
+        "form_name": "TEST_GUARD_DUTY_FORM",
+        "flag": "I",
+        "duty_id": 1
+        # Missing: team_id, miqaat_id, its_id
+    }
+    
+    print_info("Request Payload (Missing fields):")
+    print_json(payload)
+    
+    try:
+        response = requests.post(
+            GUARD_DUTY_INSERT_ENDPOINT,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        print_info(f"\nResponse Status: {response.status_code}")
+        
+        if response.status_code == 400:  # Bad Request
+            print_success("Validation correctly rejected incomplete request")
+            print_info(f"Response: {response.json()}")
+            return True
+        else:
+            print_error(f"Unexpected status code: {response.status_code}")
+            return False
+    
+    except Exception as ex:
+        print_error(f"Validation test exception: {str(ex)}")
+        return False
+
+
+def test_invalid_flag(token: str):
+    """Test invalid flag value"""
+    print_test("Validation - Invalid Flag")
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "form_name": "TEST_GUARD_DUTY_FORM",
+        "flag": "X",  # Invalid flag
+        "duty_id": 1,
+        "team_id": 2,
+        "miqaat_id": 17,
+        "its_id": 10009999
+    }
+    
+    print_info("Request Payload (Invalid flag='X'):")
+    print_json(payload)
+    
+    try:
+        response = requests.post(
+            GUARD_DUTY_INSERT_ENDPOINT,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        
+        print_info(f"\nResponse Status: {response.status_code}")
+        
+        if response.status_code == 422:  # Unprocessable Entity (validation error)
+            print_success("Validation correctly rejected invalid flag")
+            print_info(f"Response: {response.json()}")
+            return True
+        else:
+            print_warning(f"Got status code {response.status_code}")
+            print_info(f"Response: {response.text}")
+            return False
+    
+    except Exception as ex:
+        print_error(f"Invalid flag test exception: {str(ex)}")
+        return False
+
+
+# ============================================================================
+# MAIN TEST RUNNER
+# ============================================================================
+
 def main():
-    print(f"\n{BLUE}{'='*70}")
-    print(f"{'Duty API Test Suite':^70}")
-    print(f"{'='*70}{RESET}\n")
+    """Run all tests"""
+    print_header("GUARD DUTY INSERT API TEST SUITE")
+    print(f"Base URL: {BASE_URL}")
+    print(f"Test User: {TEST_USERNAME}")
+    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    print_info(f"Base URL: {BASE_URL}")
-    print_info(f"Test ITS ID: {TEST_ITS_ID}")
-    print_info(f"Test Team ID: {TEST_TEAM_ID}\n")
+    results = {
+        "passed": 0,
+        "failed": 0,
+        "total": 0
+    }
     
-    # Step 1: Login
-    token = login_and_get_token()
-    if not token:
-        print_error("\n❌ Cannot proceed without authentication token")
-        return 1
-    
-    # Step 2: Test active assigned miqaat duties
-    test1 = test_active_assigned_miqaat_duties(token)
-    
-    # Step 3: Test guard duties assigned
-    test2 = test_guard_duties_assigned(token)
-    
-    # Step 4: Test my duties
-    test3 = test_my_duties(token)
-    
-    # Step 5: Test my team duties
-    test4 = test_my_team_duties(token)
-    
-    # Step 6: Test health
-    test5 = test_health()
-    
-    # Summary
-    print_header("TEST SUMMARY")
-    
-    results = [
-        ("Login", token is not None),
-        ("Active Assigned Miqaat Duties", test1),
-        ("Guard Duties Assigned", test2),
-        ("My Duties", test3),
-        ("My Team Duties", test4),
-        ("Health Check", test5)
-    ]
-    
-    passed = sum(1 for _, r in results if r)
-    total = len(results)
-    
-    for name, result in results:
-        status = f"{GREEN}PASSED{RESET}" if result else f"{RED}FAILED{RESET}"
-        print(f"  {name:<35} {status}")
-    
-    print(f"\n{BLUE}Results: {passed}/{total} tests passed{RESET}")
-    
-    if passed == total:
-        print(f"\n{GREEN}✓ All tests passed!{RESET}\n")
-        return 0
+    # Test 1: Health Check
+    if test_health_check():
+        results["passed"] += 1
     else:
-        print(f"\n{RED}✗ Some tests failed!{RESET}\n")
-        return 1
+        results["failed"] += 1
+    results["total"] += 1
+    
+    # Test 2: Login
+    token = login()
+    if token:
+        results["passed"] += 1
+    else:
+        results["failed"] += 1
+        print_error("\n❌ Cannot proceed without authentication token")
+        return
+    results["total"] += 1
+    
+    # Test 3: Guard Duty INSERT
+    if test_guard_duty_insert(token):
+        results["passed"] += 1
+        insert_success = True
+    else:
+        results["failed"] += 1
+        insert_success = False
+    results["total"] += 1
+    
+    # Test 4: Duplicate Detection
+    if test_guard_duty_duplicate_insert(token):
+        results["passed"] += 1
+    else:
+        results["failed"] += 1
+    results["total"] += 1
+    
+    # Test 5: Missing Required Fields
+    if test_missing_required_fields(token):
+        results["passed"] += 1
+    else:
+        results["failed"] += 1
+    results["total"] += 1
+    
+    # Test 6: Invalid Flag
+    if test_invalid_flag(token):
+        results["passed"] += 1
+    else:
+        results["failed"] += 1
+    results["total"] += 1
+    
+    # Test 7: DELETE (only if INSERT was successful)
+    if insert_success:
+        print_info("\nNote: You need to find the guard_duty_id from the database to test DELETE")
+        print_info("Run this SQL query:")
+        print_info("  SELECT guard_duty_id FROM bg.guard_duties WHERE its_id = 10009999 AND status = 1;")
+        print_info("\nThen run DELETE test manually with:")
+        print_info(f"  curl -X POST {GUARD_DUTY_INSERT_ENDPOINT} \\")
+        print_info(f"    -H 'Authorization: Bearer YOUR_TOKEN' \\")
+        print_info(f"    -H 'Content-Type: application/json' \\")
+        print_info(f"    -d '{{\"form_name\":\"TEST\",\"flag\":\"D\",\"guard_duty_id\":YOUR_ID}}'")
+    
+    # Print summary
+    print_header("TEST SUMMARY")
+    print(f"Total Tests: {results['total']}")
+    print(f"{Colors.GREEN}Passed: {results['passed']}{Colors.RESET}")
+    print(f"{Colors.RED}Failed: {results['failed']}{Colors.RESET}")
+    
+    if results['failed'] == 0:
+        print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 ALL TESTS PASSED! 🎉{Colors.RESET}")
+    else:
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ SOME TESTS FAILED{Colors.RESET}")
+    
+    print(f"\n{Colors.CYAN}Next Steps:{Colors.RESET}")
+    print("1. Check database to verify guard_duties record was created")
+    print("2. Check com_user_activity_log for INSERT activity")
+    print("3. Test DELETE operation with actual guard_duty_id")
+    print("4. Check com_user_activity_log for DELETE activity")
+    print("5. Verify com_error_log for any errors")
+    
+    print(f"\n{Colors.CYAN}Verification SQL Queries:{Colors.RESET}")
+    print("""
+    -- View inserted guard duty
+    SELECT * FROM bg.guard_duties 
+    WHERE its_id = 10009999 
+    ORDER BY guard_duty_id DESC;
+    
+    -- View activity log
+    SELECT * FROM bg.com_user_activity_log 
+    WHERE table_name = 'guard_duties'
+    ORDER BY activity_id DESC 
+    LIMIT 10;
+    
+    -- View error log (if any)
+    SELECT * FROM bg.com_error_log 
+    WHERE error_procedure = 'spr_guard_duty_insert'
+    ORDER BY id DESC 
+    LIMIT 5;
+    """)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

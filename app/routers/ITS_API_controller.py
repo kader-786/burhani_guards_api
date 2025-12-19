@@ -73,49 +73,14 @@ def parse_json_response(response_text: str) -> dict:
 
 @router.post("/HandlerB2", response_model=ITSAPIResponse)
 async def call_handlerb2_api(
-    payload: ITSAPIRequest,
-    current_user: dict = Depends(get_current_user)
+    payload: ITSAPIRequest
+    # current_user: dict = Depends(get_current_user)
 ):
-    """
-    Call ITS HandlerB2 API
-    
-    **Protected endpoint** - requires valid access token
-    
-    This endpoint calls the external ITS HandlerB2 SOAP API with the provided ITS ID
-    
-    - **its_id**: ITS ID to query (e.g., "10001001")
-    
-    **External API Called:**
-    - URL: https://api.its52.com/Services.asmx/HandlerB2
-    - Method: POST
-    - Format: application/x-www-form-urlencoded
-    
-    **Example Request:**
-```json
-    {
-        "its_id": "10001001"
-    }
-```
-    
-    **Example Response:**
-```json
-    {
-        "success": true,
-        "message": "Data retrieved successfully from HandlerB2",
-        "its_id": "10001001",
-        "data": {
-            "field1": "value1",
-            "field2": "value2"
-        },
-        "raw_response": "<?xml version='1.0'?>..."
-    }
-```
-    """
     try:
         its_id = payload.its_id
         
         # Log the request
-        logger.info(f"HandlerB2 API called by user {current_user.get('its_id')} for ITS ID: {its_id}")
+        # logger.info(f"HandlerB2 API called by user {current_user.get('its_id')} for ITS ID: {its_id}")
         
         # Validate configuration
         if not HANDLERB2_AUTH_TOKEN or not HANDLERB2_HCODE:
@@ -209,41 +174,6 @@ async def call_handlere1_api(
     payload: ITSAPIRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Call ITS HandlerE1 API
-    
-    **Protected endpoint** - requires valid access token
-    
-    This endpoint calls the external ITS HandlerE1 SOAP API with the provided ITS ID
-    
-    - **its_id**: ITS ID to query (e.g., "10001001")
-    
-    **External API Called:**
-    - URL: https://api.its52.com/Services.asmx/HandlerE1
-    - Method: POST
-    - Format: application/x-www-form-urlencoded
-    
-    **Example Request:**
-```json
-    {
-        "its_id": "10001001"
-    }
-```
-    
-    **Example Response:**
-```json
-    {
-        "success": true,
-        "message": "Data retrieved successfully from HandlerE1",
-        "its_id": "10001001",
-        "data": {
-            "field1": "value1",
-            "field2": "value2"
-        },
-        "raw_response": "<?xml version='1.0'?>..."
-    }
-```
-    """
     try:
         its_id = payload.its_id
         

@@ -1,13 +1,14 @@
-# app/routers/Team_controller.py
+# app/routers/Miqaat_controller.py
 from fastapi import APIRouter, HTTPException, status, Depends
-from app.models.team import (
-    TeamRequest, 
-        JamaatsByJamiaatRequest,  # ← Add this
-    TeamInsertRequest, 
-    TeamUpdateRequest, 
-    TeamDeleteRequest, 
-    TeamResponse
+from app.models.miqaat import (
+    MiqaatRequest,
+    JamaatsByJamiaatMiqaatRequest,
+    MiqaatInsertRequest,
+    MiqaatUpdateRequest,
+    MiqaatDeleteRequest,
+    MiqaatResponse
 )
+
 from app.db import get_db_connection, call_function
 from app.config import PG_CONFIG
 from app.auth import get_current_user
@@ -17,35 +18,91 @@ import json
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/Team", tags=["Team"])
+router = APIRouter(prefix="/Miqaat", tags=["Miqaat"])
 
 
 # ============================================================================
-# VIEW TEAM MEMBERS
+# GET ALL MIQAAT
 # ============================================================================
 
-@router.post("/ViewTeam", response_model=TeamResponse)
-async def view_team(
-    payload: TeamRequest,
+@router.get("/GetAllMiqaat", response_model=MiqaatResponse)
+async def get_all_miqaat(current_user: dict = Depends(get_current_user)):
+    try:
+        logger.info(f"Get all miqaat requested by user {current_user.get('its_id')}")
+        
+        with get_db_connection() as conn:
+            result = call_function(
+                conn,
+                f"{PG_CONFIG['schema']}.spr_miqaat_master",
+                {
+                    "p_query_type": "GET-ALL-MIQAAT",
+                    "p_miqaat_id": None,    # Explicitly pass None
+                    "p_jamiaat_id": None    # Explicitly pass None
+                }
+            )
+            
+            logger.debug(f"Function result: {result}")
+            
+            if result:
+                if isinstance(result, str):
+                    result = json.loads(result)
+                
+                if isinstance(result, dict):
+                    return MiqaatResponse(
+                        success=result.get("success", False),
+                        status_code=result.get("status_code", 200),
+                        message=result.get("message", "Query executed"),
+                        data=result.get("data", None)
+                    )
+                else:
+                    return MiqaatResponse(
+                        success=False,
+                        status_code=500,
+                        message="Invalid response format from database",
+                        data=None
+                    )
+            else:
+                return MiqaatResponse(
+                    success=False,
+                    status_code=500,
+                    message="No response from database",
+                    data=None
+                )
+            
+    except Exception as ex:
+        logger.error(f"Error retrieving all miqaat: {str(ex)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(ex)}"
+        )
+
+
+# ============================================================================
+# GET MIQAAT BY ID
+# ============================================================================
+
+@router.post("/GetMiqaatById", response_model=MiqaatResponse)
+async def get_miqaat_by_id(
+    payload: MiqaatRequest,
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        team_id = payload.team_id
+        miqaat_id = payload.miqaat_id
         
         logger.info(
-            f"View team requested by user {current_user.get('its_id')} "
-            f"for team_id: {team_id}"
+            f"Get miqaat by ID requested by user {current_user.get('its_id')} "
+            f"for miqaat_id: {miqaat_id}"
         )
         
         with get_db_connection() as conn:
             result = call_function(
                 conn,
-                f"{PG_CONFIG['schema']}.spr_team",
+                f"{PG_CONFIG['schema']}.spr_miqaat_master",
                 {
-                    "p_query_type": "VIEW-TEAM",
-                    "p_team_id": team_id,
-                    "p_jamiaat_id": None  # Explicitly pass None for unused parameter
-
+                    "p_query_type": "GET-MIQAAT-BY-ID",
+                    "p_miqaat_id": miqaat_id,
+                    "p_jamiaat_id": None    # Explicitly pass None
                 }
             )
             
@@ -56,21 +113,21 @@ async def view_team(
                     result = json.loads(result)
                 
                 if isinstance(result, dict):
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=result.get("success", False),
                         status_code=result.get("status_code", 200),
                         message=result.get("message", "Query executed"),
                         data=result.get("data", None)
                     )
                 else:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=500,
                         message="Invalid response format from database",
                         data=None
                     )
             else:
-                return TeamResponse(
+                return MiqaatResponse(
                     success=False,
                     status_code=500,
                     message="No response from database",
@@ -78,7 +135,7 @@ async def view_team(
                 )
             
     except Exception as ex:
-        logger.error(f"Error retrieving team members: {str(ex)}")
+        logger.error(f"Error retrieving miqaat by ID: {str(ex)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -87,23 +144,22 @@ async def view_team(
 
 
 # ============================================================================
-# GET ALL TEAMS
+# GET ALL MIQAAT TYPES
 # ============================================================================
 
-@router.get("/GetAllTeams", response_model=TeamResponse)
-async def get_all_teams(current_user: dict = Depends(get_current_user)):
+@router.get("/GetAllMiqaatTypes", response_model=MiqaatResponse)
+async def get_all_miqaat_types(current_user: dict = Depends(get_current_user)):
     try:
-        logger.info(f"Get all teams requested by user {current_user.get('its_id')}")
+        logger.info(f"Get all miqaat types requested by user {current_user.get('its_id')}")
         
         with get_db_connection() as conn:
             result = call_function(
                 conn,
-                f"{PG_CONFIG['schema']}.spr_team",
+                f"{PG_CONFIG['schema']}.spr_miqaat_master",
                 {
-                    "p_query_type": "GET-TEAM-ALL",
-                    "p_team_id": None,  # Explicitly pass None
-                    "p_jamiaat_id": None  # Explicitly pass None for unused parameter
-
+                    "p_query_type": "GET-ALL-MIQAAT-TYPE",
+                    "p_miqaat_id": None,    # Explicitly pass None
+                    "p_jamiaat_id": None    # Explicitly pass None
                 }
             )
             
@@ -114,21 +170,21 @@ async def get_all_teams(current_user: dict = Depends(get_current_user)):
                     result = json.loads(result)
                 
                 if isinstance(result, dict):
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=result.get("success", False),
                         status_code=result.get("status_code", 200),
                         message=result.get("message", "Query executed"),
                         data=result.get("data", None)
                     )
                 else:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=500,
                         message="Invalid response format from database",
                         data=None
                     )
             else:
-                return TeamResponse(
+                return MiqaatResponse(
                     success=False,
                     status_code=500,
                     message="No response from database",
@@ -136,7 +192,7 @@ async def get_all_teams(current_user: dict = Depends(get_current_user)):
                 )
             
     except Exception as ex:
-        logger.error(f"Error retrieving all teams: {str(ex)}")
+        logger.error(f"Error retrieving miqaat types: {str(ex)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -145,216 +201,29 @@ async def get_all_teams(current_user: dict = Depends(get_current_user)):
 
 
 # ============================================================================
-# GET TEAM BY ID
+# GET JAMAATS BY JAMIAAT (FOR MIQAAT)
 # ============================================================================
 
-@router.post("/GetTeamById", response_model=TeamResponse)
-async def get_team_by_id(
-    payload: TeamRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        team_id = payload.team_id
-        
-        logger.info(
-            f"Get team by ID requested by user {current_user.get('its_id')} "
-            f"for team_id: {team_id}"
-        )
-        
-        with get_db_connection() as conn:
-            result = call_function(
-                conn,
-                f"{PG_CONFIG['schema']}.spr_team",
-                {
-                    "p_query_type": "GET-TEAM-BY-ID",
-                    "p_team_id": team_id,
-                    "p_jamiaat_id": None
-                }
-            )
-            
-            logger.debug(f"Function result: {result}")
-            
-            if result:
-                if isinstance(result, str):
-                    result = json.loads(result)
-                
-                if isinstance(result, dict):
-                    return TeamResponse(
-                        success=result.get("success", False),
-                        status_code=result.get("status_code", 200),
-                        message=result.get("message", "Query executed"),
-                        data=result.get("data", None)
-                    )
-                else:
-                    return TeamResponse(
-                        success=False,
-                        status_code=500,
-                        message="Invalid response format from database",
-                        data=None
-                    )
-            else:
-                return TeamResponse(
-                    success=False,
-                    status_code=500,
-                    message="No response from database",
-                    data=None
-                )
-            
-    except Exception as ex:
-        logger.error(f"Error retrieving team by ID: {str(ex)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
-        )
-
-
-# ============================================================================
-# GET JAMAATS BY TEAM ID
-# ============================================================================
-
-@router.post("/GetJamaatsByTeamId", response_model=TeamResponse)
-async def get_jamaats_by_team_id(
-    payload: TeamRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        team_id = payload.team_id
-        
-        logger.info(
-            f"Get jamaats by team ID requested by user {current_user.get('its_id')} "
-            f"for team_id: {team_id}"
-        )
-        
-        with get_db_connection() as conn:
-            result = call_function(
-                conn,
-                f"{PG_CONFIG['schema']}.spr_team",
-                {
-                    "p_query_type": "GET-JAMAAT-BY-TEAM-ID",
-                    "p_team_id": team_id,
-                    "p_jamiaat_id": None
-                }
-            )
-            
-            logger.debug(f"Function result: {result}")
-            
-            if result:
-                if isinstance(result, str):
-                    result = json.loads(result)
-                
-                if isinstance(result, dict):
-                    return TeamResponse(
-                        success=result.get("success", False),
-                        status_code=result.get("status_code", 200),
-                        message=result.get("message", "Query executed"),
-                        data=result.get("data", None)
-                    )
-                else:
-                    return TeamResponse(
-                        success=False,
-                        status_code=500,
-                        message="Invalid response format from database",
-                        data=None
-                    )
-            else:
-                return TeamResponse(
-                    success=False,
-                    status_code=500,
-                    message="No response from database",
-                    data=None
-                )
-            
-    except Exception as ex:
-        logger.error(f"Error retrieving jamaats by team ID: {str(ex)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
-        )
-
-
-# ============================================================================
-# GET ALL JAMIAATS
-# ============================================================================
-
-@router.get("/GetAllJamiaats", response_model=TeamResponse)
-async def get_all_jamiaats(current_user: dict = Depends(get_current_user)):
-    try:
-        logger.info(f"Get all jamiaats requested by user {current_user.get('its_id')}")
-        
-        with get_db_connection() as conn:
-            result = call_function(
-                conn,
-                f"{PG_CONFIG['schema']}.spr_team",
-                {
-                    "p_query_type": "GET-JAMIAAT-ALL",
-                    "p_team_id": None,  # Explicitly pass None,
-                    "p_jamiaat_id": None
-                }
-            )
-            
-            logger.debug(f"Function result: {result}")
-            
-            if result:
-                if isinstance(result, str):
-                    result = json.loads(result)
-                
-                if isinstance(result, dict):
-                    return TeamResponse(
-                        success=result.get("success", False),
-                        status_code=result.get("status_code", 200),
-                        message=result.get("message", "Query executed"),
-                        data=result.get("data", None)
-                    )
-                else:
-                    return TeamResponse(
-                        success=False,
-                        status_code=500,
-                        message="Invalid response format from database",
-                        data=None
-                    )
-            else:
-                return TeamResponse(
-                    success=False,
-                    status_code=500,
-                    message="No response from database",
-                    data=None
-                )
-            
-    except Exception as ex:
-        logger.error(f"Error retrieving all jamiaats: {str(ex)}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
-        )
-
-
-# ============================================================================
-# GET ALL JAMAATS BY JAMIAAT
-# ============================================================================
-
-@router.post("/GetAllJamaatsByJamiaat", response_model=TeamResponse)
-async def get_all_jamaats_by_jamiaat(
-    payload: JamaatsByJamiaatRequest,
+@router.post("/GetJamaatsByJamiaat", response_model=MiqaatResponse)
+async def get_jamaats_by_jamiaat(
+    payload: JamaatsByJamiaatMiqaatRequest,
     current_user: dict = Depends(get_current_user)
 ):
     try:
         jamiaat_id = payload.jamiaat_id
         
         logger.info(
-            f"Get all jamaats by jamiaat requested by user {current_user.get('its_id')} "
+            f"Get jamaats by jamiaat requested by user {current_user.get('its_id')} "
             f"for jamiaat_id: {jamiaat_id}"
         )
         
         with get_db_connection() as conn:
             result = call_function(
                 conn,
-                f"{PG_CONFIG['schema']}.spr_team",
+                f"{PG_CONFIG['schema']}.spr_miqaat_master",
                 {
-                    "p_query_type": "GET-ALL-JAMAAT-BY-JAMIAAT",
-                    "p_team_id": None,      # Explicitly pass None for unused parameter
+                    "p_query_type": "GET-JAMAAT-BY-JAMIAAT",
+                    "p_miqaat_id": None,        # Explicitly pass None
                     "p_jamiaat_id": jamiaat_id
                 }
             )
@@ -366,21 +235,21 @@ async def get_all_jamaats_by_jamiaat(
                     result = json.loads(result)
                 
                 if isinstance(result, dict):
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=result.get("success", False),
                         status_code=result.get("status_code", 200),
                         message=result.get("message", "Query executed"),
                         data=result.get("data", None)
                     )
                 else:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=500,
                         message="Invalid response format from database",
                         data=None
                     )
             else:
-                return TeamResponse(
+                return MiqaatResponse(
                     success=False,
                     status_code=500,
                     message="No response from database",
@@ -395,81 +264,80 @@ async def get_all_jamaats_by_jamiaat(
             detail=f"Internal server error: {str(ex)}"
         )
 
+
 # ============================================================================
-# INSERT TEAM
+# INSERT MIQAAT
 # ============================================================================
 
-@router.post("/InsertTeam", response_model=TeamResponse)
-async def insert_team(
-    payload: TeamInsertRequest,
+@router.post("/InsertMiqaat", response_model=MiqaatResponse)
+async def insert_miqaat(
+    payload: MiqaatInsertRequest,
     current_user: dict = Depends(get_current_user)
 ):
+
     try:
         user_id = current_user.get("its_id")
         
         logger.info(
-            f"Insert team requested by user {user_id}: "
-            f"team_name={payload.team_name}, jamiaat_id={payload.jamiaat_id}"
+            f"Insert miqaat requested by user {user_id}: "
+            f"miqaat_name={payload.miqaat_name}"
         )
         
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                # Call the stored procedure with OUT parameter
                 cursor.execute(
                     f"""
-                    SELECT * FROM {PG_CONFIG['schema']}.spr_team_master_insert(
-                        %s, %s, %s, %s, %s
+                    SELECT * FROM {PG_CONFIG['schema']}.spr_miqaat_master_insert(
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
-                        'Team_Management',      # p_form_name
-                        user_id,                # p_user_id
-                        payload.team_name,      # p_team_name
-                        payload.jamiaat_id,     # p_jamiaat_id
-                        payload.jamaat_ids      # p_jamaat_ids (array)
+                        'Miqaat_Management',        # p_form_name
+                        user_id,                    # p_user_id
+                        payload.miqaat_name,        # p_miqaat_name
+                        payload.miqaat_type_id,     # p_miqaat_type_id
+                        payload.start_date,         # p_start_date
+                        payload.end_date,           # p_end_date
+                        payload.venue,              # p_venue
+                        payload.jamaat_id,          # p_jamaat_id
+                        payload.jamiaat_id,         # p_jamiaat_id
+                        payload.quantity,           # p_quantity
+                        payload.is_active,          # p_is_active
+                        payload.reporting_time      # p_reporting_time
                     )
                 )
                 
                 result = cursor.fetchone()
                 result_code = result[0] if result else 0
                 
-                logger.info(f"Team insert result code: {result_code}")
+                logger.info(f"Miqaat insert result code: {result_code}")
                 
-                # Commit the transaction
                 conn.commit()
                 
-                # Interpret result codes
                 if result_code == 1:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=True,
                         status_code=201,
-                        message="Team inserted successfully",
+                        message="Miqaat inserted successfully",
                         data={"result_code": result_code}
                     )
                 elif result_code == 4:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=409,
-                        message="Team name already exists",
-                        data={"result_code": result_code}
-                    )
-                elif result_code == 5:
-                    return TeamResponse(
-                        success=False,
-                        status_code=400,
-                        message="No jamaat IDs provided",
+                        message="Miqaat name already exists",
                         data={"result_code": result_code}
                     )
                 else:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=500,
-                        message="Failed to insert team",
+                        message="Failed to insert miqaat",
                         data={"result_code": result_code}
                     )
             
     except Exception as ex:
-        logger.error(f"Error inserting team: {str(ex)}")
+        logger.error(f"Error inserting miqaat: {str(ex)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -478,81 +346,85 @@ async def insert_team(
 
 
 # ============================================================================
-# UPDATE TEAM
+# UPDATE MIQAAT
 # ============================================================================
 
-@router.put("/UpdateTeam", response_model=TeamResponse)
-async def update_team(
-    payload: TeamUpdateRequest,
+@router.put("/UpdateMiqaat", response_model=MiqaatResponse)
+async def update_miqaat(
+    payload: MiqaatUpdateRequest,
     current_user: dict = Depends(get_current_user)
 ):
     try:
         user_id = current_user.get("its_id")
         
         logger.info(
-            f"Update team requested by user {user_id}: "
-            f"team_id={payload.team_id}, team_name={payload.team_name}"
+            f"Update miqaat requested by user {user_id}: "
+            f"miqaat_id={payload.miqaat_id}"
         )
         
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                # Call the stored procedure with OUT parameter
                 cursor.execute(
                     f"""
-                    SELECT * FROM {PG_CONFIG['schema']}.spr_team_master_update(
-                        %s, %s, %s, %s, %s, %s
+                    SELECT * FROM {PG_CONFIG['schema']}.spr_miqaat_master_update(
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
-                        'Team_Management',      # p_form_name
-                        user_id,                # p_user_id
-                        payload.team_id,        # p_team_id
-                        payload.team_name,      # p_team_name
-                        payload.jamiaat_id,     # p_jamiaat_id
-                        payload.jamaat_ids      # p_jamaat_ids (array)
+                        'Miqaat_Management',        # p_form_name
+                        user_id,                    # p_user_id
+                        payload.miqaat_id,          # p_miqaat_id
+                        payload.miqaat_name,        # p_miqaat_name
+                        payload.miqaat_type_id,     # p_miqaat_type_id
+                        payload.start_date,         # p_start_date
+                        payload.end_date,           # p_end_date
+                        payload.venue,              # p_venue
+                        payload.jamaat_id,          # p_jamaat_id
+                        payload.jamiaat_id,         # p_jamiaat_id
+                        payload.quantity,           # p_quantity
+                        payload.is_active,          # p_is_active
+                        payload.reporting_time      # p_reporting_time
                     )
                 )
                 
                 result = cursor.fetchone()
                 result_code = result[0] if result else 0
                 
-                logger.info(f"Team update result code: {result_code}")
+                logger.info(f"Miqaat update result code: {result_code}")
                 
-                # Commit the transaction
                 conn.commit()
                 
-                # Interpret result codes
                 if result_code == 2:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=True,
                         status_code=200,
-                        message="Team updated successfully",
+                        message="Miqaat updated successfully",
                         data={"result_code": result_code}
                     )
                 elif result_code == 4:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=409,
-                        message="Team name already exists for another team",
+                        message="Miqaat name already exists for another miqaat",
                         data={"result_code": result_code}
                     )
                 elif result_code == 0:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=404,
-                        message="Team not found or update failed",
+                        message="Miqaat not found or update failed",
                         data={"result_code": result_code}
                     )
                 else:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=500,
-                        message="Failed to update team",
+                        message="Failed to update miqaat",
                         data={"result_code": result_code}
                     )
             
     except Exception as ex:
-        logger.error(f"Error updating team: {str(ex)}")
+        logger.error(f"Error updating miqaat: {str(ex)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -561,101 +433,96 @@ async def update_team(
 
 
 # ============================================================================
-# DELETE TEAM
+# DELETE MIQAAT
 # ============================================================================
 
-@router.delete("/DeleteTeam", response_model=TeamResponse)
-async def delete_team(
-    payload: TeamDeleteRequest,
+@router.delete("/DeleteMiqaat", response_model=MiqaatResponse)
+async def delete_miqaat(
+    payload: MiqaatDeleteRequest,
     current_user: dict = Depends(get_current_user)
 ):
     try:
         user_id = current_user.get("its_id")
         
         logger.info(
-            f"Delete team requested by user {user_id}: "
-            f"team_id={payload.team_id}"
+            f"Delete miqaat requested by user {user_id}: "
+            f"miqaat_id={payload.miqaat_id}"
         )
         
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                # Call the stored procedure with OUT parameter
                 cursor.execute(
                     f"""
-                    SELECT * FROM {PG_CONFIG['schema']}.spr_team_master_delete(
+                    SELECT * FROM {PG_CONFIG['schema']}.spr_miqaat_master_delete(
                         %s, %s, %s
                     )
                     """,
                     (
-                        'Team_Management',      # p_form_name
+                        'Miqaat_Management',    # p_form_name
                         user_id,                # p_user_id
-                        payload.team_id         # p_team_id
+                        payload.miqaat_id       # p_miqaat_id
                     )
                 )
                 
                 result = cursor.fetchone()
                 result_code = result[0] if result else 0
                 
-                logger.info(f"Team delete result code: {result_code}")
+                logger.info(f"Miqaat delete result code: {result_code}")
                 
-                # Commit the transaction
                 conn.commit()
                 
-                # Interpret result codes
                 if result_code == 3:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=True,
                         status_code=200,
-                        message="Team deleted successfully",
+                        message="Miqaat deleted successfully",
                         data={"result_code": result_code}
                     )
                 elif result_code == 0:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=404,
-                        message="Team not found, already deleted, or delete failed",
+                        message="Miqaat not found, already deleted, or delete failed",
                         data={"result_code": result_code}
                     )
                 else:
-                    return TeamResponse(
+                    return MiqaatResponse(
                         success=False,
                         status_code=500,
-                        message="Failed to delete team",
+                        message="Failed to delete miqaat",
                         data={"result_code": result_code}
                     )
             
     except Exception as ex:
-        logger.error(f"Error deleting team: {str(ex)}")
+        logger.error(f"Error deleting miqaat: {str(ex)}")
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(ex)}"
         )
+
 
 # ============================================================================
 # HEALTH CHECK
 # ============================================================================
 
 @router.get("/health")
-async def team_health_check():
+async def miqaat_health_check():
     """
-    Health check for Team endpoints
+    Health check for Miqaat endpoints
     
     Public endpoint - no authentication required
     """
     return {
         "status": "healthy",
-        "service": "Team Management",
+        "service": "Miqaat Management",
         "endpoints": [
-            "POST /Team/ViewTeam",
-            "GET /Team/GetAllTeams",
-            "POST /Team/GetTeamById",
-            "POST /Team/GetJamaatsByTeamId",
-            "GET /Team/GetAllJamiaats",
-            "GET /Team/ViewMyTeam",
-            "GET /Team/GetMyTeamDetails",
-            "POST /Team/InsertTeam",
-            "PUT /Team/UpdateTeam",
-            "DELETE /Team/DeleteTeam"
+            "GET /Miqaat/GetAllMiqaat",
+            "POST /Miqaat/GetMiqaatById",
+            "GET /Miqaat/GetAllMiqaatTypes",
+            "POST /Miqaat/GetJamaatsByJamiaat",
+            "POST /Miqaat/InsertMiqaat",
+            "PUT /Miqaat/UpdateMiqaat",
+            "DELETE /Miqaat/DeleteMiqaat"
         ]
     }

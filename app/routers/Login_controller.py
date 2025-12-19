@@ -207,33 +207,6 @@ async def health_check():
 
 @router.get("/Maintenance/get-all")
 async def get_all_maintenance():
-    """
-    Get all maintenance settings
-    
-    **Protected endpoint** - requires valid access token
-    
-    Returns all maintenance settings from the database
-    
-    **Example Response:**
-```json
-    {
-        "success": true,
-        "message": "Maintenance settings retrieved successfully",
-        "data": [
-            {
-                "maint_name": "APP_VERSION",
-                "maint_value": "1.0.0",
-                "entry_date": "2024-12-13T10:30:00"
-            },
-            {
-                "maint_name": "MAINTENANCE_MODE",
-                "maint_value": "false",
-                "entry_date": "2024-12-13T10:30:00"
-            }
-        ]
-    }
-```
-    """
     try:
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -269,37 +242,6 @@ async def get_maintenance_by_name(
     maint_name: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get specific maintenance setting by name
-    
-    **Protected endpoint** - requires valid access token
-    
-    - **maint_name**: Name of the maintenance setting (e.g., APP_VERSION, MAINTENANCE_MODE)
-    
-    Returns the specific maintenance setting if found
-    
-    **Example Response (Found):**
-```json
-    {
-        "success": true,
-        "message": "Maintenance setting 'APP_VERSION' retrieved successfully",
-        "data": {
-            "maint_name": "APP_VERSION",
-            "maint_value": "1.0.0",
-            "entry_date": "2024-12-13T10:30:00"
-        }
-    }
-```
-    
-    **Example Response (Not Found):**
-```json
-    {
-        "success": false,
-        "message": "Maintenance setting 'INVALID_KEY' not found",
-        "data": null
-    }
-```
-    """
     try:
         with get_db_connection() as conn:
             # Call the PostgreSQL function
